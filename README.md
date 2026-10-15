@@ -1,268 +1,116 @@
-# OracleLens Time-Series Forecasting Platform
+# OracleLens: Time-Series Forecasting Platform
 
-OracleLens is a B2C machine-learning forecasting platform designed to help non-technical users generate future predictions from time-series data without requiring expertise in machine learning.
+An industry-sponsored capstone exploring how non-technical users can request time-series forecasts and inspect the evidence behind them.
 
-Users can upload their own CSV datasets or work with financial market data retrieved through APIs such as Alpaca Markets. The backend handles ingestion, validation, preprocessing, forecasting, model evaluation, and reporting through a modular pipeline.
+**Context:** OracleLens collaboration, September 2025–April 2026, Toronto.  
+**My focus:** applied forecasting, preprocessing and leakage controls, model evaluation, financial-data integration and backend/cloud contributions.  
+**Public repository:** technical case study. Application source, model weights and deployment configuration are not included.
 
-## Project Goals
+## User problem
 
-OracleLens was designed around four core principles:
+A forecast is hard to assess when the user sees only a predicted line. OracleLens was designed to pair forecasts with historical testing evidence, data-quality checks and explanations of preprocessing decisions.
 
-- forecasting accuracy
-- modularity
-- leakage prevention
-- customer-facing transparency
+Users could work with uploaded CSV data or financial-market data retrieved through Alpaca Markets. The broader design connects ingestion, validation, forecasting, evaluation and reporting through backend APIs.
 
-The goal is to provide reliable forecasts while keeping the user experience simple and protecting proprietary model logic.
+## End-to-end workflow
 
-## User Workflow
+1. **Ingest:** accept a time-series CSV or retrieve market observations.
+2. **Validate:** check timestamps, target columns, missing data and chronological order.
+3. **Audit:** identify conditions that could leak future information.
+4. **Preprocess:** prepare causal inputs and fit learned transformations within training boundaries.
+5. **Train/evaluate:** benchmark forecasting approaches on chronological partitions.
+6. **Predict:** produce a forecast for the requested horizon.
+7. **Report:** return predictions with out-of-sample errors, direction metrics and audit information.
 
-A typical forecasting request follows this flow:
+## My contributions
 
-1. Upload a CSV dataset or retrieve market data from a supported API.
-2. Validate timestamps, schema, and target variables.
-3. Run data-quality and leakage checks.
-4. Apply leakage-safe preprocessing.
-5. Select or execute an appropriate forecasting model.
-6. Generate out-of-sample evaluation metrics.
-7. Produce future forecasts.
-8. Return predictions and model-performance evidence to the user.
+My work included:
 
-## Forecasting Architecture
+- Developing and benchmarking time-series forecasting models across multiple horizons.
+- Preparing multi-source financial data and integrating Alpaca Markets data.
+- Building preprocessing workflows and chronological train/validation/test strategies.
+- Contributing controls for missing values, scaling and data-leakage prevention.
+- Evaluating forecasts using RMSE, MAE and directional accuracy.
+- Designing REST API components and contributing to backend/system integration.
+- Supporting AWS deployment and investigating integration/deployment issues.
+- Explaining model-performance results in terms useful to non-technical stakeholders.
 
-The forecasting layer supports multiple time-series models and is designed to allow additional architectures to be integrated over time.
+This was a team collaboration. These contributions describe my work within the project, rather than sole ownership of the complete product.
 
-Models explored include:
+## Architecture and interfaces
 
-- LSTM
-- GRU
-- PatchTST and other transformer-based time-series models
+| Component | Responsibility | Important boundary |
+|---|---|---|
+| Ingestion | CSV inputs and external market-data retrieval | Validate schema and data availability |
+| Validation | Timestamp order, target selection, missing observations and duplicates | Reject or explain unsuitable inputs |
+| Preprocessing | Causal filling, scaling and window generation | Fit transformations on training history |
+| Forecasting | Multiple horizon/model experiments | Model choice requires empirical validation |
+| Evaluation | Chronological out-of-sample comparisons | Keep backtests distinct from future forecasts |
+| Reporting/API | Predictions, metrics and audit explanations | Avoid presenting uncertainty as certainty |
+| Cloud/backend | Model serving and application integration | Deployment details are not published here |
 
-Rather than requiring customers to select a model manually, the platform can automatically choose an appropriate forecasting approach using factors such as:
+The case study describes design boundaries, not a complete service contract or executable architecture.
 
-- forecast horizon
-- validated model performance
-- historical behaviour
-- model stability
+## Leakage prevention
 
-This simplifies the customer experience while allowing the underlying model-selection logic to remain proprietary.
+Time-series evaluation can look strong when future observations accidentally influence training. The project emphasized:
 
-## Data Ingestion
+- Sorting and checking timestamps before constructing windows.
+- Chronological train/validation/test separation.
+- Forward filling only where appropriate; avoiding backfill from future observations.
+- Fitting scalers on training data rather than the full dataset.
+- Reviewing lookback windows, forecast horizons and label alignment.
+- Checking for suspicious future-looking features and cross-partition contamination.
+- Recording problems in an audit output rather than silently accepting invalid inputs.
 
-OracleLens supports multiple data-entry paths.
+An audit record can identify the check, status, severity and explanation. The current public repository does not contain the audit implementation or a test suite, so these design descriptions should not be read as independently verified coverage of every leakage scenario.
 
-### CSV Uploads
+## Model development and evaluation
 
-Users can provide their own time-series datasets through CSV files.
+The project explored recurrent and transformer-based time-series approaches, including LSTM and PatchTST. Different forecast horizons and configurations were investigated.
 
-The pipeline is designed to validate:
+Evaluation considered:
 
-- timestamp columns
-- chronological ordering
-- target-variable availability
-- missing observations
-- feature consistency
-- training and testing boundaries
-
-### Market Data APIs
-
-The platform can also ingest financial-market data through external APIs such as Alpaca Markets.
-
-This allows forecasts to be generated from live or recently retrieved market data without requiring users to prepare files manually.
-
-## Leakage-Safe Preprocessing
-
-Preventing data leakage is a major design requirement of OracleLens.
-
-Time-series models can appear to perform extremely well if future information accidentally enters the training process. To reduce this risk, preprocessing follows causal time-series principles.
-
-Examples include:
-
-- maintaining chronological order
-- separating training and testing data by time
-- allowing forward filling where appropriate
-- avoiding backfilling that may expose future information
-- avoiding two-sided interpolation across future observations
-- fitting preprocessing operations only on permitted historical data
-
-## Data-Leakage Detection Layer
-
-OracleLens includes a dedicated leakage-validation layer that runs before forecasting.
-
-The audit can evaluate areas such as:
-
-- timestamp integrity
-- chronological train/test separation
-- target leakage
-- suspicious future-looking features
-- lookback-window separation
-- forecast-horizon separation
-- preprocessing scope
-- train/test cross-contamination
-
-Critical leakage failures can block a forecasting request rather than allowing potentially misleading results to continue through the pipeline.
-
-## Leakage Audit Report
-
-The leakage-validation layer produces a structured audit report.
-
-Each check can include:
-
-| Field | Purpose |
+| Metric | What it answers |
 |---|---|
-| Check | Leakage condition being tested |
-| Status | Pass or fail |
-| Severity | Relative importance of the issue |
-| Explanation | Human-readable description |
-| Technical Details | Information useful for debugging or auditing |
+| MAE | How large is the average absolute forecast error? |
+| RMSE | How strongly are larger errors penalized? |
+| Directional accuracy | How often does predicted movement match actual movement under the chosen definition? |
+| Forecast-versus-actual plots | Where do timing, trend and magnitude diverge? |
 
-This provides an auditable record of data-integrity checks before model predictions are generated.
+A meaningful result needs its dataset, date range, split boundaries, horizon, baseline and preprocessing configuration. No benchmark table is published because this repository does not include the matching logs and artifacts required to substantiate one.
 
-## Model Evaluation
+Model selection based on horizon, validation performance and stability is a design direction; this page does not claim a verified automated selector or that every explored model was deployed successfully.
 
-OracleLens is designed to separate model training performance from out-of-sample testing performance.
+## Reliability and user communication
 
-Evaluation can include metrics such as:
+A useful forecasting interface should show:
 
-- RMSE
-- MAE
-- prediction loss or error
-- directional accuracy
+- Which observations were used.
+- What preprocessing changed.
+- Whether validation found data-quality or leakage concerns.
+- How the selected configuration behaved on unseen historical observations.
+- How future predictions differ from measured historical results.
 
-Directional accuracy is particularly useful in financial forecasting because it measures whether the model correctly predicts the direction of movement rather than only the absolute numerical error.
+Financial forecasts remain uncertain. A small numerical error does not necessarily imply useful directional performance, and backtest results do not guarantee future outcomes.
 
-The system is designed to show customers historical testing evidence alongside future predictions so they can understand how the model behaved on unseen data.
+## Technology and engineering skills
 
-## Customer-Facing Transparency
+Python, pandas, NumPy, PyTorch, time-series modeling, Alpaca Markets, REST APIs, AWS, model evaluation, data validation, Git/GitHub and technical documentation.
 
-A key design goal is to provide meaningful evidence of forecast reliability without exposing proprietary model implementations.
+My contribution combined modeling with integration: preparing inputs, evaluating outputs and connecting model workflows to a user-facing system.
 
-Customers can receive:
+## What is publicly available
 
-- future predictions
-- historical forecast-versus-actual comparisons
-- training metrics
-- out-of-sample testing metrics
-- directional accuracy
-- data-quality results
-- leakage-audit status
+This repository currently contains this case study only. It is **not an installable release or a running public demo**.
 
-This creates a more transparent forecasting experience than presenting a prediction alone.
+A useful next public revision would add a sanitized synthetic example, documented request/response shapes, audit examples, evaluation logs and small validation tests, subject to project-sharing permissions. No confidential data, credentials, private infrastructure identifiers or proprietary model implementation is published.
 
-## Modular Design
+## Interview discussion points
 
-OracleLens uses a modular architecture so that individual components can evolve independently.
-
-Conceptually, the system can be separated into:
-
-```text
-Data Source
-    |
-    v
-Ingestion
-    |
-    v
-Validation
-    |
-    v
-Leakage Audit
-    |
-    v
-Preprocessing
-    |
-    v
-Model Selection
-    |
-    v
-Forecasting
-    |
-    v
-Evaluation
-    |
-    v
-Reporting / API Response
-```
-
-This structure makes it easier to:
-
-- add new forecasting models
-- introduce additional data sources
-- improve validation rules
-- change reporting logic
-- scale individual services independently
-
-## Technology Stack
-
-The project involves technologies and concepts including:
-
-- Python
-- Pandas
-- NumPy
-- PyTorch
-- TensorFlow
-- LSTM
-- GRU
-- PatchTST
-- time-series forecasting
-- Alpaca Markets API
-- REST APIs
-- AWS
-- data validation
-- model evaluation
-- leakage detection
-- Git and GitHub
-
-## My Contributions
-
-My work on OracleLens included:
-
-- building and benchmarking time-series forecasting models
-- working with LSTM, GRU, and transformer-based forecasting approaches
-- developing preprocessing workflows for time-series datasets
-- implementing chronological train/validation/test strategies
-- helping design controls to prevent data leakage
-- contributing to model-evaluation workflows using RMSE, MAE, and directional accuracy
-- working with API-based financial-market data ingestion
-- contributing to backend and REST API components
-- supporting architecture and AWS deployment planning
-- translating model-performance results into information that could be understood by non-technical users
-
-## Business Value
-
-OracleLens is designed to reduce the technical barrier between machine-learning forecasting and end users.
-
-Instead of requiring customers to understand:
-
-- model architectures
-- hyperparameters
-- train/test methodology
-- feature engineering
-- forecasting libraries
-
-the platform handles those processes internally and returns a simpler output:
-
-- the forecast
-- evidence of historical model performance
-- data-quality and leakage checks
-- enough context for the user to judge the result responsibly
-
-## Current Status
-
-The repository documents the architecture and design principles of the OracleLens forecasting platform.
-
-Future public additions may include:
-
-- sanitized pipeline examples
-- sample datasets
-- model benchmarking results
-- leakage-audit examples
-- API request and response examples
-- architecture diagrams
-- forecast visualizations
-- unit and validation tests
-
-Proprietary model logic, production credentials, private datasets, and sensitive deployment configuration are intentionally excluded from this public repository.
-
-## Skills Demonstrated
-
-Time-Series Forecasting | Data Analysis | Machine Learning | Deep Learning | LSTM | GRU | Transformers | PatchTST | Python | Data Pipelines | REST APIs | AWS | Model Evaluation | Data Validation | Data-Leakage Prevention | Financial Data
+- How chronological splits differ from random train/test splits.
+- Why scaler fitting and backfilling can leak information.
+- How lookback length and prediction horizon affect evaluation.
+- Why RMSE and directional accuracy answer different questions.
+- How backend validation makes model behavior easier to explain.
+- What was implemented, evaluated, deployed or left as a design proposal.
